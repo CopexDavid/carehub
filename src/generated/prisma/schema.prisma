@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String
+  email         String       @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          String       @default("PATIENT")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  clientLists   ClientList[]
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  content   String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChatGroup {
+  id        String          @id @default(cuid())
+  name      String
+  accountId String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  account   WhatsAppAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+}
+
+model WhatsAppAccount {
+  id                    String              @id @default(cuid())
+  name                  String
+  phoneNumber           String              @unique
+  isActive              Boolean             @default(true)
+  verified              Boolean             @default(false)
+  phoneNumberId         String              @unique
+  businessAccountId     String
+  accessToken           String
+  webhookSecret         String?
+  maxConcurrentMessages Int                 @default(10)
+  retryAttempts         Int                 @default(3)
+  gptModel              String              @default("gpt-3.5-turbo")
+  maxTokens             Int                 @default(1000)
+  temperature           Float               @default(0.7)
+  totalMessages         Int                 @default(0)
+  avgResponseTime       Int                 @default(0)
+  lastActive            DateTime?
+  expiresAt             DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  assistantSettings     AssistantSettings?
+  groups                ChatGroup[]
+  templates             MessageTemplate[]
+  broadcasts            WhatsAppBroadcast[]
+  chats                 WhatsAppChat[]
+  messages              WhatsAppMessage[]
+}
+
+model WhatsAppMessage {
+  id          String          @id @default(cuid())
+  whatsappId  String?
+  from        String
+  to          String
+  type        String          @default("text")
+  content     String
+  timestamp   DateTime        @default(now())
+  status      String          @default("sent")
+  errorData   String? // JSON строка с информацией об ошибке
+  accountId   String
+  chatId      String
+  isAssistant Boolean         @default(false)
+  chat        WhatsAppChat    @relation(fields: [chatId], references: [id])
+  account     WhatsAppAccount @relation(fields: [accountId], references: [id])
+
+  @@index([chatId])
+  @@index([accountId])
+}
+
+model WhatsAppChat {
+  id               String            @id @default(cuid())
+  phoneNumber      String
+  displayName      String?
+  lastMessageAt    DateTime          @default(now())
+  unreadCount      Int               @default(0)
+  accountId        String
+  assistantEnabled Boolean           @default(false)
+  threadId         String?
+  group            String?
+  account          WhatsAppAccount   @relation(fields: [accountId], references: [id])
+  messages         WhatsAppMessage[]
+
+  @@unique([phoneNumber, accountId])
+}
+
+model MessageTemplate {
+  id              String              @id @default(cuid())
+  name            String
+  category        String
+  language        String
+  status          String              @default("pending")
+  components      Json
+  whatsappId      String?
+  accountId       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  rejectionReason String?
+  account         WhatsAppAccount     @relation(fields: [accountId], references: [id])
+  broadcasts      WhatsAppBroadcast[]
+
+  @@index([accountId])
+}
+
+model WhatsAppBroadcast {
+  id                 String                @id @default(cuid())
+  name               String
+  status             String                @default("draft")
+  scheduledAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  recipients         Int                   @default(0)
+  sent               Int                   @default(0)
+  delivered          Int                   @default(0)
+  read               Int                   @default(0)
+  failed             Int                   @default(0)
+  templateParameters Json?
+  accountId          String
+  clientListId       String
+  templateId         String
+  attachments        BroadcastAttachment[]
+  template           MessageTemplate       @relation(fields: [templateId], references: [id])
+  clientList         ClientList            @relation(fields: [clientListId], references: [id])
+  account            WhatsAppAccount       @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([clientListId])
+  @@index([templateId])
+}
+
+model BroadcastAttachment {
+  id          String            @id @default(cuid())
+  filename    String
+  type        String
+  url         String
+  size        Int
+  createdAt   DateTime          @default(now())
+  broadcastId String
+  broadcast   WhatsAppBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastId])
+}
+
+model ClientList {
+  id           String              @id @default(cuid())
+  name         String
+  description  String?
+  userId       String
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  user         User                @relation(fields: [userId], references: [id])
+  phoneNumbers PhoneNumber[]
+  broadcasts   WhatsAppBroadcast[]
+  clients      Client[]            @relation("ClientToClientList")
+
+  @@index([userId])
+}
+
+model PhoneNumber {
+  id           String     @id @default(cuid())
+  phone        String
+  clientListId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  clientList   ClientList @relation(fields: [clientListId], references: [id])
+
+  @@index([clientListId])
+}
+
+model Client {
+  id          String       @id @default(cuid())
+  name        String?
+  phoneNumber String       @unique
+  tags        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  lists       ClientList[] @relation("ClientToClientList")
+}
+
+model AssistantSettings {
+  id           String          @id @default(cuid())
+  name         String          @default("AI Ассистент")
+  model        String          @default("gpt-4")
+  openAiKey    String          @default("")
+  assistantId  String?
+  isConfigured Boolean         @default(false)
+  status       String          @default("inactive")
+  errorMessage String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  accountId    String          @unique
+  account      WhatsAppAccount @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+}
