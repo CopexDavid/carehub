@@ -4,24 +4,49 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
+  --background-start-rgb: 255, 255, 255;
   --background-end-rgb: 255, 255, 255;
+  --text-primary: #000000;
+  --text-secondary: #4B5563;
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F3F4F6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
+    --background-start-rgb: 17, 24, 39;
+    --background-end-rgb: 17, 24, 39;
+    --text-primary: #FFFFFF;
+    --text-secondary: #9CA3AF;
+    --bg-primary: #111827;
+    --bg-secondary: #1F2937;
   }
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* Улучшенная читаемость текста */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Исправление контраста для темного режима */
+@media (prefers-color-scheme: dark) {
+  input,
+  textarea,
+  select {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Улучшение видимости границ в темном режиме */
+  .border,
+  [class*="border-"] {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
 }

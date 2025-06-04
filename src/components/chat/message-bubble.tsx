@@ -104,14 +104,14 @@ export function MessageBubble({
         'max-w-[50%] rounded-xl px-3 py-1.5',
         type === 'sent' ? 
           status === 'failed' ? 'bg-red-500 text-white' : 
-          isAssistant ? 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white' :
-          'bg-gradient-to-br from-green-500 to-green-600 text-white' : 
-        'bg-gray-100 dark:bg-gray-800',
+          isAssistant ? 'bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-md' :
+          'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-md' : 
+        'bg-gray-100 dark:bg-gray-800 dark:text-white shadow-md',
         type === 'sent' ? 'ml-auto' : 'mr-auto',
         showTail && (type === 'sent' ? 'rounded-br-none' : 'rounded-bl-none')
       )}>
         {isAssistant && (
-          <div className="absolute -bottom-5 right-0 flex items-center gap-1 text-[10px] text-gray-500">
+          <div className="absolute -bottom-5 right-0 flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400">
             <span>Ассистент</span>
             <Bot className="w-3 h-3 text-blue-500" />
           </div>

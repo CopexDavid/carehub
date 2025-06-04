@@ -233,22 +233,22 @@ export function VoiceMessage({ url, duration: initialDuration }: VoiceMessagePro
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 max-w-md">
+    <div className="flex flex-col gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/90 dark:border dark:border-gray-800 max-w-md shadow-sm">
       <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3">
           <button
           onClick={togglePlayPause}
           className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center',
-              isPlaying ? 'bg-red-500' : 'bg-blue-500',
-              'hover:opacity-90 transition-opacity'
+              'w-10 h-10 rounded-full flex items-center justify-center shadow-md',
+              isPlaying ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600',
+              'hover:opacity-90 transition-all'
           )}
         >
             {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white ml-0.5" />}
           </button>
 
         <div className="flex-1">
-            <div className="relative w-full h-2 bg-gray-200 rounded-full">
+            <div className="relative w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full">
               <motion.div
                 className="absolute left-0 top-0 h-full bg-blue-500 rounded-full"
               style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
@@ -265,8 +265,8 @@ export function VoiceMessage({ url, duration: initialDuration }: VoiceMessagePro
             />
           </div>
             <div className="flex justify-between mt-1">
-              <span className="text-xs text-gray-500">{formatTime(currentTime)}</span>
-              <span className="text-xs text-gray-500">{formatTime(duration)}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTime(currentTime)}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTime(duration)}</span>
           </div>
         </div>
 
