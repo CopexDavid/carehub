@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Redis } from '@upstash/redis'
 import { OpenAI } from 'openai'
-import { sendWhatsAppMessage } from '@/utils/whatsapp'
 
 // Инициализация Redis для очереди сообщений
 const redis = new Redis({
@@ -65,4 +64,29 @@ export async function POST(request: Request) {
     console.error('Error processing webhook:', error)
     return new NextResponse('Internal Server Error', { status: 500 })
   }
+}
+
+// Вспомогательная функция для отправки сообщений через WhatsApp API
+export async function sendWhatsAppMessage(to: string, message: string, phoneNumberId: string, accessToken: string) {
+  const url = `https://graph.facebook.com/v17.0/${phoneNumberId}/messages`
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: to,
+      type: 'text',
+      text: { body: message }
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`WhatsApp API error: ${response.statusText}`)
+  }
+
+  return response.json()
 } 

@@ -72,84 +72,88 @@ export async function POST(req: Request) {
 
     console.log('Found user:', { id: user.id, email: user.email })
 
-    // Создаем все записи в одной транзакции
-    const result = await prisma.$transaction(async (tx) => {
-      console.log('Starting transaction...')
-      console.log('Creating client list with data:', { name, description, userId: user.id })
-
-      try {
-        // 1. Создаем базу клиентов (только основные данные)
-        const clientList = await tx.clientList.create({
+    // Создаем базу клиентов
+    console.log('Creating client list with data:', { name, description, userId: user.id })
+    const clientList = await prisma.clientList.create({
       data: {
         name,
         description,
-            userId: user.id
-          }
-        })
+        userId: user.id
+      }
+    })
 
-        console.log('Created client list:', clientList)
+    console.log('Created client list:', clientList)
 
-        // 2. Создаем записи номеров телефонов
-        console.log('Creating phone numbers...')
-        const phoneNumbersCreated = await tx.phoneNumber.createMany({
-          data: phoneNumbers.map(phone => ({
-            phone,
-            clientListId: clientList.id
-          }))
-        })
+    // Создаем записи номеров телефонов пакетами по 1000
+    console.log('Creating phone numbers...')
+    const BATCH_SIZE = 1000
+    for (let i = 0; i < phoneNumbers.length; i += BATCH_SIZE) {
+      const batch = phoneNumbers.slice(i, i + BATCH_SIZE)
+      await prisma.phoneNumber.createMany({
+        data: batch.map(phone => ({
+          phone,
+          clientListId: clientList.id
+        }))
+      })
+      console.log(`Created phone numbers batch ${i / BATCH_SIZE + 1}/${Math.ceil(phoneNumbers.length / BATCH_SIZE)}`)
+    }
 
-        console.log('Created phone numbers:', phoneNumbersCreated)
-
-        // 3. Создаем клиентов
-        console.log('Creating/updating clients...')
-        const createdClients = []
-        for (const phone of phoneNumbers) {
-          try {
-            const client = await tx.client.upsert({
-              where: { phoneNumber: phone },
-              create: {
-                phoneNumber: phone,
-                tags: '',
-                lists: {
-                  connect: { id: clientList.id }
-                }
-              },
-              update: {
-                lists: {
-                  connect: { id: clientList.id }
-                }
-              }
-            })
-            createdClients.push(client)
-          } catch (error) {
-            console.error('Error creating/updating client with phone:', phone, error)
-            throw error
-          }
+    // Создаем или обновляем клиентов пакетами
+    console.log('Creating/updating clients...')
+    const existingClients = await prisma.client.findMany({
+      where: {
+        phoneNumber: {
+          in: phoneNumbers
         }
+      },
+      select: {
+        phoneNumber: true
+      }
+    })
 
-        console.log('Created/updated clients count:', createdClients.length)
+    const existingPhones = new Set(existingClients.map(c => c.phoneNumber))
+    const newPhones = phoneNumbers.filter(phone => !existingPhones.has(phone))
 
-        // 4. Получаем финальный результат
-        const finalResult = await tx.clientList.findUnique({
-          where: { id: clientList.id },
-      include: {
-            phoneNumbers: true,
-            clients: true
-          }
+    // Создаем новых клиентов пакетами
+    if (newPhones.length > 0) {
+      for (let i = 0; i < newPhones.length; i += BATCH_SIZE) {
+        const batch = newPhones.slice(i, i + BATCH_SIZE)
+        await prisma.client.createMany({
+          data: batch.map(phone => ({
+            phoneNumber: phone,
+            tags: ''
+          })),
+          skipDuplicates: true
         })
+        console.log(`Created new clients batch ${i / BATCH_SIZE + 1}/${Math.ceil(newPhones.length / BATCH_SIZE)}`)
+      }
+    }
 
-        console.log('Transaction completed successfully')
-        return finalResult
-      } catch (error) {
-        console.error('Transaction error:', error)
-        throw error
+    // Связываем всех клиентов со списком
+    for (let i = 0; i < phoneNumbers.length; i += BATCH_SIZE) {
+      const batch = phoneNumbers.slice(i, i + BATCH_SIZE)
+      await prisma.$executeRaw`
+        INSERT INTO "_ClientToClientList" ("A", "B")
+        SELECT c.id, ${clientList.id}
+        FROM "Client" c
+        WHERE c."phoneNumber" IN (${batch})
+        ON CONFLICT DO NOTHING
+      `
+      console.log(`Connected clients batch ${i / BATCH_SIZE + 1}/${Math.ceil(phoneNumbers.length / BATCH_SIZE)}`)
+    }
+
+    // Получаем финальный результат
+    const result = await prisma.clientList.findUnique({
+      where: { id: clientList.id },
+      include: {
+        phoneNumbers: true,
+        clients: true
       }
     })
 
     return NextResponse.json(result)
   } catch (error) {
     console.error('Error creating client list:', error)
-    // Возвращаем более подробную информацию об ошибке
     return NextResponse.json(
       { 
         error: 'Ошибка при создании базы клиентов',

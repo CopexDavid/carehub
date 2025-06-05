@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
-import { activeConnections } from '@/utils/events'
+
+const activeConnections = new Map<string, (data: any) => Promise<void>>()
 
 export async function GET(req: NextRequest) {
   const encoder = new TextEncoder()
